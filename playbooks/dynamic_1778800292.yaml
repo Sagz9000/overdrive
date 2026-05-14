@@ -1,0 +1,30 @@
+name: "Recover XOR Key from Encrypted JPEG"
+description: "Recover the secret XOR key used to encrypt /workspace/my_magic_bytes.jpg.enc by leveraging known JPEG magic bytes."
+metadata:
+  difficulty: medium
+  category: custom
+phases:
+  - id: phase_1
+    name: "Analyze Encrypted File Header"
+    depends_on: []
+    allowed_tools: [run_in_sandbox]
+    max_attempts: 3
+    objectives:
+      - "Read the first 16 bytes of /workspace/my_magic_bytes.jpg.enc in hex format to identify the ciphertext."
+    recommended_tools: [run_in_sandbox]
+  - id: phase_2
+    name: "Derive XOR Key"
+    depends_on: [phase_1]
+    allowed_tools: [run_in_sandbox]
+    max_attempts: 3
+    objectives:
+      - "Use a Python script to XOR the first few bytes of the encrypted file with the known JPEG magic bytes (FF D8 FF E0 or FF D8 FF E1) to recover the XOR key."
+    recommended_tools: [run_in_sandbox]
+  - id: phase_3
+    name: "Decrypt File and Recover Flag"
+    depends_on: [phase_2]
+    allowed_tools: [run_in_sandbox]
+    max_attempts: 3
+    objectives:
+      - "Apply the recovered XOR key to the entire file /workspace/my_magic_bytes.jpg.enc to decrypt it and search for the flag in the resulting plaintext or image metadata."
+    recommended_tools: [run_in_sandbox]
