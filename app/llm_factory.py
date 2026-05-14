@@ -254,6 +254,12 @@ class LlamaCppChatWrapper(BaseChatModel):
                 
                 for block in json_blocks:
                     try:
+                        # Pre-clean: Replace Python-style triple quotes with valid JSON escaped strings
+                        # This handles cases where models (like Qwen) try to jam multi-line code into JSON
+                        if '"""' in block:
+                            import re as _re_internal
+                            block = _re_internal.sub(r'"""([\s\S]*?)"""', lambda m: _json.dumps(m.group(1)), block)
+                        
                         data = _json.loads(block)
                         # Handle multiple naming conventions
                         tool_name = data.get("name") or data.get("tool") or data.get("action")
