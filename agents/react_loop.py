@@ -156,13 +156,20 @@ def execute_python_code(code: str) -> str:
     if not container_id:
         container_id = sm.start_container()
         
-    # Save the raw code to a temporary file in the sandbox and execute it
+    # Save the raw code to a file in the workspace so it is preserved as evidence
     import base64
+    import time
+    script_name = f"agent_script_{int(time.time())}.py"
     encoded_code = base64.b64encode(code.encode('utf-8')).decode('utf-8')
-    cmd = f"echo '{encoded_code}' | base64 -d > /tmp/agent_script.py && python3 /tmp/agent_script.py"
+    cmd = f"echo '{encoded_code}' | base64 -d > /workspace/{script_name} && python3 /workspace/{script_name}"
     
+    obs.log_execution_step("tool_call", {"tool": "execute_python_code", "script": script_name})
     result = sm.execute_command(container_id, f'bash -c "{cmd}"')
-    return f"Exit Code: {result['exit_code']}\nOutput:\n{result['output']}"
+    
+    # Sync workspace to ensure the script is available in evidence_storage
+    sm.sync_workspace(container_id, "app/evidence_storage")
+    
+    return f"Exit Code: {result['exit_code']}\nScript saved as: /workspace/{script_name}\nOutput:\n{result['output']}"
 
 
 @tool
