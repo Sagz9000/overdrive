@@ -84,6 +84,11 @@ def run_in_sandbox(command: str = None, **kwargs) -> str:
     if not command:
         return "ERROR: You must pass a single string under the key 'command'."
 
+    # Detection: if command is just a file path to a data/binary file
+    if command.startswith("/") and any(ext in command for ext in ['.enc', '.jpg', '.png', '.bin', '.dat', '.zip']):
+        return (f"ERROR: You are trying to 'execute' a data file ({command}). "
+                f"This will fail. Use 'read_file_from_sandbox', 'xxd', or 'multimodal_analysis' instead.")
+
     # Proactive nudge to use execute_python_code for complex python commands
     if 'python3 -c' in command and ('\n' in command or len(command) > 100 or "'" in command or '"' in command):
         return ("ERROR: You are trying to pass complex Python code through Bash. "

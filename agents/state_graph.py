@@ -88,7 +88,9 @@ def create_solver_node(solver_llm, all_tools, playbook_engine, obs):
             has_tool_call = any(isinstance(m, AIMessage) and m.tool_calls for m in new_msgs)
             
             if not has_tool_call:
-                nudge = "System Error: You provided text but no valid tool call. You must use a tool to proceed."
+                nudge = ("System Error: You provided text but no valid tool call. You must use a tool to proceed.\n"
+                         "IMPORTANT: You must use the actual JSON tool call format provided by the API.\n"
+                         "Example: {\"name\": \"run_in_sandbox\", \"parameters\": {\"command\": \"ls\"}}")
                 new_msgs.append(HumanMessage(content=nudge))
                 obs.log_execution_step("agent_empty_call_nudge", {"reason": "No tool call detected in response batch"})
 

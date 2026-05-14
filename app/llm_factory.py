@@ -246,21 +246,34 @@ class LlamaCppChatWrapper(BaseChatModel):
         tool_calls = []
         if self._tools:
             try:
-                # Pattern 1: Llama 3.1 native JSON tool calls
-                for pattern in [r'(\{"name":\s*"[^"]+",\s*"parameters":\s*\{[^}]*\}\})', r'(\{[^}]*"tool"[^}]*\})']:
-                    json_match = _re.search(pattern, content, _re.DOTALL)
-                    if json_match:
-                        try:
-                            data = _json.loads(json_match.group(1))
-                            tool_name = data.get("name") or data.get("tool")
-                            tool_args = data.get("parameters") or data.get("arguments") or {}
-                            if tool_name and any(t.name == tool_name for t in self._tools):
-                                print(f"[Tool Call] {tool_name}({tool_args})")
-                                tool_id = f"call_{int(time.time())}_{uuid.uuid4().hex[:6]}"
-                                tool_calls.append({"name": tool_name, "args": tool_args, "id": tool_id, "type": "tool_call"})
-                                break
-                        except _json.JSONDecodeError:
-                            pass
+                # Pattern 1: Native JSON tool calls (Name/Parameters or Tool/Arguments or Action/Input)
+                json_blocks = _re.findall(r'```json\s*(\{.*?\})\s*```', content, _re.DOTALL)
+                if not json_blocks:
+                    # Fallback to finding any JSON-like block if no markdown block
+                    json_blocks = _re.findall(r'(\{[\s\S]*?\})', content)
+                
+                for block in json_blocks:
+                    try:
+                        data = _json.loads(block)
+                        # Handle multiple naming conventions
+                        tool_name = data.get("name") or data.get("tool") or data.get("action")
+                        tool_args = data.get("parameters") or data.get("arguments") or data.get("input") or {}
+                        
+                        # Normalize string arguments to dict if necessary
+                        if isinstance(tool_args, str) and tool_name:
+                            if tool_name == "run_in_sandbox": tool_args = {"command": tool_args}
+                            elif tool_name == "execute_python_code": tool_args = {"code": tool_args}
+                            elif tool_name == "search_knowledge_base": tool_args = {"query": tool_args}
+                            elif tool_name == "mark_phase_complete": tool_args = {"evidence": tool_args}
+                            else: tool_args = {"input": tool_args}
+
+                        if tool_name and any(t.name == tool_name for t in self._tools):
+                            print(f"[Tool Call] {tool_name}({tool_args})")
+                            tool_id = f"call_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+                            tool_calls.append({"name": tool_name, "args": tool_args, "id": tool_id, "type": "tool_call"})
+                            break # Found a valid tool call
+                    except (_json.JSONDecodeError, TypeError):
+                        continue
 
                 # Pattern 3: Action / Action Input (ReAct standard) - Find LAST occurrence to handle repetition
                 if not tool_calls:
