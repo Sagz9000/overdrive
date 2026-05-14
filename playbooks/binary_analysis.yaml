@@ -1,0 +1,41 @@
+name: "Binary Analysis Playbook"
+description: "Basic reverse engineering and binary analysis"
+metadata:
+  difficulty: hard
+  category: reversing
+  estimated_time_minutes: 25
+  tags: [elf, disassembly, reverse-engineering, debugging]
+phases:
+  - id: phase_1_recon
+    name: "Binary Identification"
+    depends_on: []
+    allowed_tools: [file, ldd, strings]
+    max_attempts: 3
+    objectives:
+      - "Run file command to determine architecture (e.g. 32-bit vs 64-bit ELF)."
+      - "Run ldd to check for shared library dependencies."
+      - "Run strings on the binary to search for hardcoded flags, passwords, or hints."
+    recommended_tools:
+      - file
+      - ldd
+      - strings
+  - id: phase_2_analysis
+    name: "Static & Dynamic Analysis"
+    depends_on: [phase_1_recon]
+    max_attempts: 3
+    objectives:
+      - "Use objdump -d to disassemble the main functions if needed."
+      - "Use ltrace <file> to run the binary and observe library calls (useful for string comparisons)."
+      - "Use strace <file> to observe system calls."
+      - "If it requires input, try passing standard test strings or using python -c 'print(\"A\"*50)'."
+    recommended_tools:
+      - objdump
+      - ltrace
+      - strace
+      - python3
+  - id: phase_3_flag
+    name: "Flag Extraction"
+    depends_on: [phase_2_analysis]
+    max_attempts: 3
+    objectives:
+      - "Synthesize findings to extract or reconstruct the flag."

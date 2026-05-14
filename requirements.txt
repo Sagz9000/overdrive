@@ -1,0 +1,32 @@
+# =============================================================================
+# Project Overdrive — Python Dependencies
+# =============================================================================
+# Core framework
+docker>=7.0.0
+langchain>=0.2.0
+langchain-openai>=0.1.0
+langchain-community>=0.2.0
+pydantic>=2.0.0
+pyyaml>=6.0.0
+langchain-google-genai>=1.0.0
+streamlit>=1.33.0
+litellm>=1.40.0
+langgraph>=0.2.0
+
+# Heterogeneous compute stack — GPU (llama.cpp with CUDA)
+# NOTE: Install with CUDA support via setup_cuda.ps1 or:
+#   $env:CMAKE_ARGS="-DGGML_CUDA=on"; pip install llama-cpp-python --force-reinstall --no-cache-dir
+llama-cpp-python>=0.3.0
+
+# Heterogeneous compute stack — NPU (OpenVINO)
+openvino>=2024.0.0
+optimum-intel[openvino]>=1.18.0
+transformers>=4.40.0
+
+# Heterogeneous compute stack — RAG (ChromaDB + Embeddings)
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+
+# Utilities
+tiktoken>=0.7.0
+requests>=2.31.0

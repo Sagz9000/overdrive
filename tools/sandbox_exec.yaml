@@ -1,0 +1,23 @@
+# =============================================================================
+# Tool: run_in_sandbox
+# Executes a shell command inside the isolated Linux sandbox.
+# =============================================================================
+# Inspired by Dreadnode's Robopages YAML-based tool descriptors.
+# The YAML schema defines the tool interface; the Python implementation
+# in loader.py provides the execution logic.
+
+name: run_in_sandbox
+description: |
+  Executes a shell command inside the isolated Linux sandbox and returns
+  the stdout and stderr output. Use this for running analysis tools like
+  file, strings, xxd, binwalk, nmap, etc.
+parameters:
+  command:
+    type: string
+    description: "The shell command to execute"
+    required: true
+returns:
+  type: string
+  description: "Exit code followed by stdout/stderr output"
+container: true
+category: execution

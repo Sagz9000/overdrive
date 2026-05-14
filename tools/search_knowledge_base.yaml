@@ -1,0 +1,25 @@
+name: search_knowledge_base
+description: |
+  Search the local CTF knowledge base (RAG vector database) for relevant
+  payloads, techniques, tool syntax, or exploit patterns.
+  The knowledge base contains: GTFOBins, PayloadsAllTheThings, Exploit-DB
+  summaries, and tool cheat sheets (nmap, sqlmap, ffuf, pwntools, etc.).
+  You MUST use this tool to look up exact syntax rather than guessing.
+category: knowledge
+container: false
+
+parameters:
+  query:
+    type: string
+    description: |
+      Natural language query describing what you need.
+      Examples: "SQL injection UNION bypass", "nmap UDP scan syntax",
+      "python XOR decryption", "GTFOBins sudo privilege escalation"
+    required: true
+
+returns:
+  type: string
+  description: |
+    Formatted knowledge base results with source attribution.
+    Returns up to 5 micro-chunks (150-250 tokens each) most relevant
+    to the query. Returns "No relevant knowledge found" if empty.

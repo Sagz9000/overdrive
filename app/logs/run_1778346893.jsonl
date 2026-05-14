@@ -1,0 +1,2 @@
+{"timestamp": 1778346894.033317, "run_id": "run_1778346893", "type": "planner_start", "data": {"question": "Find the open ports and look for a flag on an HTTP service.", "flag_format": "CTF{"}}
+{"timestamp": 1778346907.7200732, "run_id": "run_1778346893", "type": "error", "data": {"error": "Planner error: Connection error."}}

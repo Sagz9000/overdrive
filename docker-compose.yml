@@ -1,0 +1,24 @@
+# NOTE: Ollama is now OPTIONAL. The default GPU backend is llama-cpp-python (native).
+# Keep this service only if you want Ollama as a fallback provider.
+# The primary inference runs natively on the host to access GPU/NPU hardware directly.
+
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: project_overdrive_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./.ollama_storage:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    profiles:
+      - ollama   # Only starts with: docker-compose --profile ollama up

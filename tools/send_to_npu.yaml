@@ -1,0 +1,31 @@
+name: send_to_npu
+description: |
+  Delegate heavy text parsing to the NPU (Intel Neural Processing Unit).
+  Use this when you receive large terminal output (e.g., raw nmap scans,
+  directory listings, log files) that would consume too much GPU context.
+  The NPU returns a condensed JSON summary of the key findings.
+category: compute
+container: false
+
+parameters:
+  raw_text:
+    type: string
+    description: |
+      The raw terminal output to parse. Can be very large (thousands of lines).
+      Examples: full nmap scan output, dirb/ffuf results, log file contents.
+    required: true
+  task:
+    type: string
+    description: |
+      What to extract from the text. Be specific.
+      Examples: "Extract all open ports with service versions",
+      "Find all discovered directories and files",
+      "Identify credentials or interesting strings"
+    required: true
+
+returns:
+  type: string
+  description: |
+    Condensed JSON summary from the NPU parser. Contains extracted
+    structured data (ports, files, vulnerabilities, credentials, flags).
+    Always valid JSON, under 500 tokens.

@@ -1,0 +1,19 @@
+name: multimodal_analysis
+description: |
+  Uses a multimodal vision/audio model (Gemini Flash) to analyze a file
+  in the sandbox. Use this for images (.png, .jpg), audio (.wav, .mp3),
+  or PDFs that require visual or auditory analysis.
+parameters:
+  path:
+    type: string
+    description: "Path to the file inside the sandbox (e.g., /workspace/image.png)"
+    required: true
+  prompt:
+    type: string
+    description: "Analysis question or instruction (e.g., 'What text is written in this image?')"
+    required: true
+returns:
+  type: string
+  description: "Multimodal analysis result from the vision model"
+container: true
+category: analysis

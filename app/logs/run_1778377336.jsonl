@@ -1,0 +1,3 @@
+{"timestamp": 1778377336.8624508, "run_id": "run_1778377336", "type": "file_injected", "data": {"filename": "my_magic_bytes.jpg.enc", "path": "/workspace/my_magic_bytes.jpg.enc"}}
+{"timestamp": 1778377336.8630762, "run_id": "run_1778377336", "type": "planner_start", "data": {"question": "Can you recover the secret XOR key we used to encrypt the flag? ", "flag_format": "247CTF{"}}
+{"timestamp": 1778377617.1512625, "run_id": "run_1778377336", "type": "error", "data": {"error": "Planner error: Connection error."}}

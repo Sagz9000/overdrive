@@ -1,0 +1,6 @@
+{"timestamp": 1778710884.1998966, "run_id": "run_1778710878", "type": "planner_start", "data": {"question": "\"Perform an environment check: List the available network interfaces in your sandbox and identify the OS version running inside the container. Then, search your knowledge base for any 'nmap' cheatsheets.\""}}
+{"timestamp": 1778710886.0014277, "run_id": "run_1778710878", "type": "planner_result", "data": {"playbook_selected": "network_analysis.yaml"}}
+{"timestamp": 1778710886.0045521, "run_id": "run_1778710878", "type": "playbook_loaded", "data": {"name": "Network Analysis Playbook", "total_phases": 3}}
+{"timestamp": 1778710886.0049891, "run_id": "run_1778710878", "type": "agent_start", "data": {"task": "Begin the playbook for target ''.", "playbook": "Network Analysis Playbook"}}
+{"timestamp": 1778710886.0138404, "run_id": "run_1778710878", "type": "phase_start", "data": {"phase": "Packet Capture Analysis", "fsm_state": "analyze", "phase_index": 0, "total_phases": 3}}
+{"timestamp": 1778710886.014789, "run_id": "run_1778710878", "type": "state_graph_node", "data": {"state": "analyze", "phase": "Packet Capture Analysis", "available_tools": ["run_in_sandbox", "write_file_in_sandbox", "read_file_from_sandbox", "multimodal_analysis", "search_knowledge_base", "send_to_npu", "mark_phase_complete"], "step_count": 0}}

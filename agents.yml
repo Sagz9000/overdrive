@@ -1,0 +1,128 @@
+# =============================================================================
+# Project Overdrive -- Declarative Agent Configuration (Heterogeneous Compute)
+# =============================================================================
+# Three-tier architecture per the PRD:
+#   GPU (llama.cpp/CUDA) -- Lead Orchestrator + Reviewer
+#   NPU (OpenVINO)       -- Utility Parser for condensing large outputs
+#   CPU/RAM (ChromaDB)   -- RAG knowledge base (handled by tools, not an agent)
+#
+# Providers: llamacpp | openvino | ollama | openai | anthropic | gemini
+# See .env for all configuration options.
+# =============================================================================
+
+agents:
+  # == Lead Orchestrator (GPU) ================================================
+  # The strategic brain. Runs on the RTX 5070 via llama.cpp/CUDA.
+  # Responsibilities: attack planning, vulnerability analysis, exploit writing.
+  # Context window is strictly capped at 4096 tokens to stay within 8GB VRAM.
+  - name: lead_orchestrator
+    role: primary
+    model: "Qwen2.5-Coder-7B-Instruct"
+    provider: llamacpp
+    compute_tier: gpu
+    model_path: "${GPU_MODEL_PATH:-models/gpu/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf}"
+    context_size: 16384
+    json_grammar: false
+    temperature: 0.1
+    instructions: |
+      You are the Lead Orchestrator of Project Overdrive. You are an elite 
+      cybersecurity AI based on the Qwen Coder architecture. Your strength is
+      logical precision and complex tool orchestration.
+      
+      Your goal is to solve CTF challenges by following the provided playbook 
+      phases. You must use the available tools to gather evidence, analyze 
+      vulnerabilities, and capture flags. 
+      
+      STRICT RULES:
+      1. TOOL FORMAT: You MUST use the following format for tool calls:
+         Reasoning: <step-by-step logic>
+         Action: <tool_name>
+         Action Input: <JSON_formatted_args>
+         
+      2. NO YAML: NEVER generate YAML code blocks, Ansible-style playbooks, or pseudo-code.
+      3. ACT: You are an orchestrator calling functions, not a developer writing a script.
+      4. PRECISION: Commands inside run_in_sandbox must be syntactically perfect.
+      5. TERMINATION: When objectives are met, call mark_phase_complete immediately.
+
+      CRITICAL RULES:
+      1. ONLY USE ONE TOOL PER MESSAGE. Never output multiple tool calls.
+      2. You MUST acknowledge the output of your previous tool in your 'Reasoning' block before taking the next action.
+      3. PRIORITY: If you find the information requested in the 'User Request' (e.g. OS version, network interfaces), STOP and report it immediately using mark_phase_complete with reasoning="OBJECTIVE_MET: <your_answer>".
+      4. Your context window is strictly limited. Keep observations focused.
+      5. For large terminal output, delegate parsing to the NPU via the send_to_npu tool.
+      6. When all objectives of a phase are met, call mark_phase_complete.
+
+
+    tools:
+      - run_in_sandbox
+      - write_file_in_sandbox
+      - read_file_from_sandbox
+      - search_knowledge_base
+      - send_to_npu
+      - multimodal_analysis
+      - mark_phase_complete
+    handoffs:
+      - flag_verifier
+    guardrails:
+      - block_destructive
+      - sanitize_output
+      - enforce_workspace_boundary
+    max_steps: 50
+
+  # == Utility & Recon Parser (NPU) ===========================================
+  # Runs on the Intel Core Ultra 9 NPU via OpenVINO.
+  # Receives massive walls of terminal text and returns condensed JSON summaries.
+  # Never executes tools directly -- only parses text sent to it.
+  - name: npu_parser
+    role: support
+    model: "Llama-3.1-8B-INT4"
+    provider: openvino
+    compute_tier: npu
+    model_path: "${NPU_MODEL_PATH:-models/npu/}"
+    context_size: 4096
+    temperature: 0
+    instructions: |
+      You are a utility text parser running on the NPU. You receive raw terminal
+      output (nmap scans, directory listings, log files, etc.) and return
+      highly condensed JSON summaries.
+
+      RULES:
+      1. Output ONLY valid JSON. No prose, no markdown, no explanations.
+      2. Extract: open ports, services, versions, interesting files, credentials,
+         vulnerabilities, and any flags or flag fragments.
+      3. Keep output under 500 tokens. Be ruthlessly concise.
+
+      Example output format:
+      {
+        "open_ports": [{"port": 80, "service": "http", "version": "Apache 2.4.41"}],
+        "interesting_files": ["/etc/passwd", "/var/www/html/admin.php"],
+        "potential_vulns": ["Apache 2.4.41 - CVE-2021-41773"],
+        "credentials": [],
+        "flags": []
+      }
+    tools: []
+    handoffs: []
+    guardrails:
+      - sanitize_output
+    max_steps: 1
+
+  # == Flag Verifier / Reviewer (Hybrid: Local -> Gemini) =======================
+  # Routine reviews are performed on the GPU to save API limits.
+  # If local review fails 2x, the system escalates to Gemini 2.5 Flash.
+  - name: flag_verifier
+    role: reviewer
+    model: "gemma-4-31b-it"
+    provider: google_genai
+    compute_tier: cloud
+    context_size: 16384
+    temperature: 0
+    instructions: |
+      You are a strict Reviewer Agent for CTF challenges. You receive phase
+      objectives and the solver agent's evidence. Evaluate whether ALL objectives
+      have been met based on concrete tool output evidence -- not just the agent's
+      claims. Respond with 'APPROVED' if met, or 'REJECTED: <reason>' if not.
+    tools: []
+    handoffs: []
+    guardrails:
+      - sanitize_output
+    max_steps: 5

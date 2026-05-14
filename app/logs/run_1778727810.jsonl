@@ -1,0 +1,2 @@
+{"timestamp": 1778727816.2276325, "run_id": "run_1778727810", "type": "file_injected", "data": {"filename": "my_magic_bytes.jpg.enc", "path": "/workspace/my_magic_bytes.jpg.enc"}}
+{"timestamp": 1778727816.228949, "run_id": "run_1778727810", "type": "planner_start", "data": {"question": "Can you recover the secret XOR key we used to encrypt the flag?"}}

@@ -1,0 +1,4 @@
+{"timestamp": 1778727938.8701637, "run_id": "run_1778727935", "type": "file_injected", "data": {"filename": "my_magic_bytes.jpg.enc", "path": "/workspace/my_magic_bytes.jpg.enc"}}
+{"timestamp": 1778727938.8716087, "run_id": "run_1778727935", "type": "planner_start", "data": {"question": "Can you recover the secret XOR key we used to encrypt the flag?"}}
+{"timestamp": 1778727980.6741886, "run_id": "run_1778727935", "type": "planner_result", "data": {"playbook_selected": "dynamic_1778727980.yaml"}}
+{"timestamp": 1778727980.6822445, "run_id": "run_1778727935", "type": "error", "data": {"error": "expected '<document start>', but found '<scalar>'\n  in \"C:\\users\\potte\\.gemini\\antigravity\\scratch\\project_overdrive\\playbooks\\dynamic_1778727980.yaml\", line 1, column 2386"}}

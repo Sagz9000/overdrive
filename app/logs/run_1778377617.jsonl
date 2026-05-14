@@ -1,0 +1,12 @@
+{"timestamp": 1778377617.1782215, "run_id": "run_1778377617", "type": "file_injected", "data": {"filename": "my_magic_bytes.jpg.enc", "path": "/workspace/my_magic_bytes.jpg.enc"}}
+{"timestamp": 1778377617.1795318, "run_id": "run_1778377617", "type": "planner_start", "data": {"question": "Can you recover the secret XOR key we used to encrypt the flag? ", "flag_format": "247CTF{"}}
+{"timestamp": 1778377617.363854, "run_id": "run_1778377617", "type": "file_injected", "data": {"filename": "my_magic_bytes.jpg.enc", "path": "/workspace/my_magic_bytes.jpg.enc"}}
+{"timestamp": 1778377617.364381, "run_id": "run_1778377617", "type": "planner_start", "data": {"question": "Can you recover the secret XOR key we used to encrypt the flag? ", "flag_format": "247CTF{"}}
+{"timestamp": 1778377617.3726346, "run_id": "run_1778377617", "type": "file_injected", "data": {"filename": "my_magic_bytes.jpg.enc", "path": "/workspace/my_magic_bytes.jpg.enc"}}
+{"timestamp": 1778377617.372967, "run_id": "run_1778377617", "type": "planner_start", "data": {"question": "Can you recover the secret XOR key we used to encrypt the flag? ", "flag_format": "247CTF{"}}
+{"timestamp": 1778377617.408177, "run_id": "run_1778377617", "type": "file_injected", "data": {"filename": "my_magic_bytes.jpg.enc", "path": "/workspace/my_magic_bytes.jpg.enc"}}
+{"timestamp": 1778377617.4084365, "run_id": "run_1778377617", "type": "planner_start", "data": {"question": "Can you recover the secret XOR key we used to encrypt the flag? ", "flag_format": "247CTF{"}}
+{"timestamp": 1778377630.6505015, "run_id": "run_1778377617", "type": "error", "data": {"error": "Planner error: Connection error."}}
+{"timestamp": 1778377630.8389502, "run_id": "run_1778377617", "type": "error", "data": {"error": "Planner error: Connection error."}}
+{"timestamp": 1778377630.9151614, "run_id": "run_1778377617", "type": "error", "data": {"error": "Planner error: Connection error."}}
+{"timestamp": 1778377630.961766, "run_id": "run_1778377617", "type": "error", "data": {"error": "Planner error: Connection error."}}

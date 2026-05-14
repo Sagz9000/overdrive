@@ -1,0 +1,40 @@
+name: "Network Analysis Playbook"
+description: "Network enumeration and packet capture analysis"
+metadata:
+  difficulty: medium
+  category: network
+  estimated_time_minutes: 20
+  tags: [pcap, nmap, tshark, enumeration]
+phases:
+  - id: phase_1_pcap
+    name: "Packet Capture Analysis"
+    depends_on: []
+    allowed_tools: [tshark, strings]
+    max_attempts: 3
+    objectives:
+      - "If a .pcap or .pcapng file is provided, use tshark to list protocol hierarchy: tshark -r <file> -qz io,phs"
+      - "Extract HTTP traffic: tshark -r <file> -Y http -T fields -e text"
+      - "Look for cleartext credentials, FTP traffic, or base64 encoded strings."
+    recommended_tools:
+      - tshark
+      - strings
+  - id: phase_2_enum
+    name: "Active Enumeration"
+    depends_on: [phase_1_pcap]
+    max_attempts: 3
+    objectives:
+      - "If a target IP/Domain is provided, run a fast nmap scan: nmap -sV -F <target>"
+      - "Identify open ports and running services."
+      - "Run curl on any open HTTP/HTTPS ports to grab headers."
+    recommended_tools:
+      - nmap
+      - curl
+  - id: phase_3_flag
+    name: "Flag Extraction"
+    depends_on: [phase_2_enum]
+    max_attempts: 3
+    objectives:
+      - "Combine findings from PCAP or active scans to locate the flag."
+      - "Base64 decode any suspicious strings found."
+    recommended_tools:
+      - base64

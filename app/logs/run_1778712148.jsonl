@@ -1,0 +1,1 @@
+{"timestamp": 1778712156.0867758, "run_id": "run_1778712148", "type": "error", "data": {"error": "The library name could not be automatically inferred. If using the command-line, please provide the argument --library {transformers,diffusers,timm,sentence_transformers}. Example: `--library diffusers`."}}

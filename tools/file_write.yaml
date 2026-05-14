@@ -1,0 +1,19 @@
+name: write_file_in_sandbox
+description: |
+  Writes a file with the given content inside the sandbox. Use this to
+  create Python scripts, config files, or any text file needed for analysis.
+  Example: write_file_in_sandbox(path="/workspace/decrypt.py", content="import sys\nprint('hello')")
+parameters:
+  path:
+    type: string
+    description: "Absolute path inside the sandbox where the file will be created"
+    required: true
+  content:
+    type: string
+    description: "The text content to write to the file"
+    required: true
+returns:
+  type: string
+  description: "Success or failure message with bytes written"
+container: true
+category: filesystem

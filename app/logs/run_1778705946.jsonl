@@ -1,0 +1,1 @@
+{"timestamp": 1778705946.635123, "run_id": "run_1778705946", "type": "error", "data": {"error": "invalid literal for int() with base 10: '-1                    # -1 = offload ALL layers to GPU'"}}

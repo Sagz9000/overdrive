@@ -1,0 +1,16 @@
+name: mark_phase_complete
+description: |
+  Marks the current playbook phase as complete and triggers a handoff
+  to the reviewer agent. Call this tool when you have fulfilled ALL
+  objectives of the current phase. Provide your reasoning for why
+  the phase is complete.
+parameters:
+  reasoning:
+    type: string
+    description: "Explanation of why all phase objectives have been met"
+    required: true
+returns:
+  type: string
+  description: "Acknowledgment that review has been requested"
+container: false
+category: control

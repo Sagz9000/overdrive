@@ -1,0 +1,20 @@
+name: read_file_from_sandbox
+description: |
+  Reads the contents of a file inside the sandbox. Useful for inspecting
+  generated output, decoded files, or script results. For binary files,
+  use xxd or hexdump via run_in_sandbox instead.
+parameters:
+  path:
+    type: string
+    description: "Absolute path to the file inside the sandbox"
+    required: true
+  max_bytes:
+    type: integer
+    description: "Maximum number of bytes to read (default: 4096)"
+    required: false
+    default: 4096
+returns:
+  type: string
+  description: "Exit code and file content"
+container: true
+category: filesystem

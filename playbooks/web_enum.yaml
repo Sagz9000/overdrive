@@ -1,0 +1,21 @@
+name: Web Enumeration
+description: Basic methodology for enumerating a web target.
+phases:
+  - id: port_scan
+    name: Port Scanning
+    objectives: 
+      - Identify open ports and running services on the target.
+    recommended_tools:
+      - nmap (e.g., nmap -sV -p- <target>)
+  - id: directory_fuzzing
+    name: Directory Fuzzing
+    objectives:
+      - Enumerate hidden directories and files on HTTP/HTTPS ports.
+    recommended_tools:
+      - curl
+  - id: vulnerability_scan
+    name: Vulnerability Identification
+    objectives:
+      - Identify basic misconfigurations and vulnerabilities.
+    recommended_tools:
+      - nmap --script vuln

@@ -1,0 +1,38 @@
+name: "Forensics Analysis Playbook"
+description: "Systematic forensic analysis of provided files"
+metadata:
+  difficulty: medium
+  category: forensics
+  estimated_time_minutes: 15
+  tags: [steganography, metadata, file-carving, image-analysis]
+phases:
+  - id: phase_1_recon
+    name: "File Identification and Vision Analysis"
+    depends_on: []
+    allowed_tools: [file, exiftool, binwalk, strings, multimodal_analysis]
+    max_attempts: 3
+    objectives:
+      - "Run file command to identify the true file type of the target"
+      - "If the file is an image (.png, .jpg) or audio (.wav), use 'multimodal_analysis' to look/listen for hidden flags or text."
+      - "Run exiftool to extract metadata"
+      - "Run binwalk to check for embedded files"
+      - "Run strings to find readable text"
+    recommended_tools:
+      - file
+      - multimodal_analysis
+      - exiftool
+      - binwalk
+      - strings
+  - id: phase_2_extraction
+    name: "Data Extraction"
+    depends_on: [phase_1_recon]
+    max_attempts: 3
+    objectives:
+      - "Extract any embedded files using binwalk -e or foremost"
+      - "Examine extracted files for flags or clues"
+      - "Check for steganography with steghide without a password (steghide extract -sf <file> -p '')"
+    recommended_tools:
+      - binwalk
+      - foremost
+      - steghide
+      - multimodal_analysis

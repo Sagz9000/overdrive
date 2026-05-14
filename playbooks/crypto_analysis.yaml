@@ -1,0 +1,58 @@
+name: "Crypto Analysis Playbook"
+description: "Systematic cryptographic analysis and key recovery"
+metadata:
+  difficulty: medium
+  category: crypto
+  estimated_time_minutes: 20
+  tags: [xor, aes, rsa, key-recovery, encoding]
+phases:
+  - id: phase_1_recon
+    name: "File Analysis and Reconnaissance"
+    depends_on: []
+    allowed_tools: [file, xxd, strings, ls]
+    max_attempts: 3
+    objectives:
+      - "Run file command to identify the file type of the target"
+      - "Examine the first 80 bytes with xxd | head -5"
+      - "Run strings to find any readable text in the file"
+      - "Calculate file size with ls -la"
+    recommended_tools:
+      - file
+      - xxd
+      - strings
+      - ls
+  - id: phase_2_analysis
+    name: "Cryptographic Analysis"
+    depends_on: [phase_1_recon]
+    max_attempts: 3
+    objectives:
+      - "Identify potential encryption type (e.g., XOR, Base64, AES)."
+      - "If XOR is suspected, use a Known Plaintext Attack (KPA) by comparing file bytes to common magic bytes (JPEG: FF D8 FF E0, PNG: 89 50 4E 47)."
+      - "Write a Python script to recover the XOR key by XORing the first few ciphertext bytes against these magic bytes."
+      - "Verify if the recovered key repeats (e.g., 'secretsecret')."
+    recommended_tools:
+      - xxd
+      - python3
+      - xortool
+  - id: phase_3_extraction
+    name: "Flag Extraction"
+    depends_on: [phase_2_analysis]
+    max_attempts: 3
+    objectives:
+      - "xortool automatically creates a folder called xortool_out with the decrypted files."
+      - "Run: ls -la xortool_out/ to find the decrypted file."
+      - "Extract and report the flag from the decrypted file (use strings or exiftool on the decrypted file)"
+    recommended_tools:
+      - ls
+      - strings
+      - exiftool
+  - id: phase_4_correction
+    name: "Self-Correction and Alternative Methods"
+    depends_on: [phase_3_extraction]
+    max_attempts: 2
+    objectives:
+      - "If the flag was not found, check if you accidentally read binary data as text."
+      - "Try 'xortool' with different parameters (e.g., -c 20 or -l <length>)."
+      - "Attempt to brute-force the XOR key if it is likely short (1-4 bytes)."
+      - "Summarize exactly why previous methods failed."
+    recommended_tools: ["xortool", "python3"]

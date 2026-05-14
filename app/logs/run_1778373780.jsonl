@@ -1,0 +1,2 @@
+{"timestamp": 1778373781.2344782, "run_id": "run_1778373780", "type": "file_injected", "data": {"filename": "dummy.txt", "path": "/workspace/dummy.txt"}}
+{"timestamp": 1778373781.2349555, "run_id": "run_1778373780", "type": "planner_start", "data": {"question": "Test", "flag_format": ""}}
