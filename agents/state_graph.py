@@ -38,7 +38,13 @@ def create_solver_node(solver_llm, all_tools, playbook_engine, obs):
         phase_data = state["phase_data"]
         
         # Filter tools based on phase
-        allowed_tool_names = phase_data.get("allowed_tools", [])
+        allowed_tool_names = list(phase_data.get("allowed_tools", []))
+        
+        # PROACTIVE NUDGE: If shell access is allowed, Python execution must also be allowed
+        # to prevent "escaping hell" in the sandbox.
+        if "run_in_sandbox" in allowed_tool_names and "execute_python_code" not in allowed_tool_names:
+            allowed_tool_names.append("execute_python_code")
+            
         available_tools = [t for t in all_tools if t.name in allowed_tool_names]
         
         # Ensure fallback tools are always available

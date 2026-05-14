@@ -560,7 +560,7 @@ phases:
   - id: phase_1
     name: "Phase 1 Name"
     depends_on: []
-    allowed_tools: [run_in_sandbox, search_knowledge_base]
+    allowed_tools: [run_in_sandbox, execute_python_code, search_knowledge_base]
     max_attempts: 3
     objectives:
       - "Specific command to run or objective to achieve"
