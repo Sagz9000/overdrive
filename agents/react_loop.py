@@ -84,6 +84,12 @@ def run_in_sandbox(command: str = None, **kwargs) -> str:
     if not command:
         return "ERROR: You must pass a single string under the key 'command'."
 
+    # Proactive nudge to use execute_python_code for complex python commands
+    if 'python3 -c' in command and ('\n' in command or len(command) > 100 or "'" in command or '"' in command):
+        return ("ERROR: You are trying to pass complex Python code through Bash. "
+                "This will fail due to quote-escaping issues. "
+                "YOU MUST USE the 'execute_python_code' tool instead for multi-line or complex scripts.")
+
     step_count += 1
     if not container_id:
         container_id = sm.start_container()
@@ -120,7 +126,8 @@ def run_in_sandbox(command: str = None, **kwargs) -> str:
     if result['exit_code'] != 0:
         error_msg = output_text
         if "No such file or directory" in error_msg:
-            error_msg += "\nTIP: Use 'ls' or 'find' to verify the file exists before running it."
+            error_msg += ("\nTIP: THE SANDBOX IS EMPTY. Pre-existing scripts (like frequency_analysis.py or recover_xor_key.py) do NOT exist. "
+                          "You MUST create your own scripts using 'write_file_in_sandbox' or use 'execute_python_code'.")
             
         return (f"COMMAND FAILED (exit code {result['exit_code']}):\n"
                 f"stderr: {error_msg}\n\n"
@@ -420,6 +427,8 @@ CRITICAL RULES:
 5. If a command fails, analyze the error and try a corrected approach.
 6. When all objectives are met, call mark_phase_complete with evidence.
 7. THE SANDBOX IS EMPTY. Do not try to run custom Python scripts (like frequency_analysis.py) because they DO NOT EXIST. You must write your own scripts using execute_python_code.
+8. DO NOT search for pre-built recovery scripts (e.g., find / -name "*.py"). They are NOT there. You are the one who must write the code.
+9. For multi-line Python logic, ALWAYS use execute_python_code instead of run_in_sandbox to avoid shell escaping hell.
 """
 
     if filename:

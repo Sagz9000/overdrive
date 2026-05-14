@@ -464,7 +464,10 @@ CRITICAL RULES:
 2. Follow the objectives strictly. Complete them in order.
 3. If a tool fails, analyze the error and try a different approach.
 4. When ALL objectives are met, call mark_phase_complete with evidence.
-5. If you find a flag, it will be automatically captured.
+5. THE SANDBOX IS EMPTY. Do not try to run custom Python scripts (like frequency_analysis.py) because they DO NOT EXIST. You must write your own scripts using execute_python_code.
+6. DO NOT search for pre-built recovery scripts (e.g., find / -name "*.py"). They are NOT there. You are the one who must write the code.
+7. For multi-line Python logic, ALWAYS use execute_python_code instead of run_in_sandbox to avoid shell escaping hell.
+8. If you find a flag, it will be automatically captured.
 
 TOOL FORMATTING RULES:
 You MUST use the following format for tool calls:

@@ -51,10 +51,14 @@ agents:
       4. Your context window is strictly limited. Keep observations focused.
       5. For large terminal output, delegate parsing to the NPU via the send_to_npu tool.
       6. When all objectives of a phase are met, call mark_phase_complete.
+      7. THE SANDBOX IS EMPTY. Do not try to run custom Python scripts (like frequency_analysis.py) because they DO NOT EXIST. You must write your own scripts using execute_python_code.
+      8. DO NOT search for pre-built recovery scripts (e.g., find / -name "*.py"). They are NOT there. You are the one who must write the code.
+      9. For multi-line Python logic, ALWAYS use execute_python_code instead of run_in_sandbox to avoid shell escaping hell.
 
 
     tools:
       - run_in_sandbox
+      - execute_python_code
       - write_file_in_sandbox
       - read_file_from_sandbox
       - search_knowledge_base
