@@ -15,6 +15,7 @@ Also retains legacy support for:
 import os
 import time
 import sys
+import uuid
 from typing import Optional, List, Any, Dict, Sequence
 
 # ── CUDA Path Injection (PRD 4.1 Stability Fix) ──────────────────────────────
@@ -255,7 +256,8 @@ class LlamaCppChatWrapper(BaseChatModel):
                             tool_args = data.get("parameters") or data.get("arguments") or {}
                             if tool_name and any(t.name == tool_name for t in self._tools):
                                 print(f"[Tool Call] {tool_name}({tool_args})")
-                                tool_calls.append({"name": tool_name, "args": tool_args, "id": "call_" + str(int(time.time())), "type": "tool_call"})
+                                tool_id = f"call_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+                                tool_calls.append({"name": tool_name, "args": tool_args, "id": tool_id, "type": "tool_call"})
                                 break
                         except _json.JSONDecodeError:
                             pass
@@ -282,7 +284,8 @@ class LlamaCppChatWrapper(BaseChatModel):
                         
                         if any(t.name == tool_name for t in self._tools):
                             print(f"[Tool Call] {tool_name}({tool_args})")
-                            tool_calls.append({"name": tool_name, "args": tool_args, "id": "call_" + str(int(time.time())), "type": "tool_call"})
+                            tool_id = f"call_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+                            tool_calls.append({"name": tool_name, "args": tool_args, "id": tool_id, "type": "tool_call"})
 
                 # Pattern 2: Python-style calls
                 if not tool_calls:
@@ -305,7 +308,8 @@ class LlamaCppChatWrapper(BaseChatModel):
                                     elif tool_name == "read_file_from_sandbox": args = {"path": val}
                                     else: args = {"input": val}
                             print("[Tool Call] " + tool_name + "(" + str(args) + ")")
-                            tool_calls.append({"name": tool_name, "args": args, "id": "call_" + str(int(time.time())), "type": "tool_call"})
+                            tool_id = f"call_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+                            tool_calls.append({"name": tool_name, "args": args, "id": tool_id, "type": "tool_call"})
             except Exception as e:
                 print("[Tool Extract Error] " + str(e))
 

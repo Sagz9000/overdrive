@@ -64,20 +64,25 @@ def run_in_sandbox(command: str = None, **kwargs) -> str:
     """
     global container_id, executed_commands, step_count
     
-    # Handle hallucinated parameters from smaller models
+    # Improved fallback for hallucinated parameters
     if not command and kwargs:
         if 'script_path' in kwargs:
             command = f"python3 {kwargs['script_path']}"
-        elif 'query' in kwargs:
-            command = kwargs['query']
         elif 'code' in kwargs:
             command = f"python3 -c \"{kwargs['code']}\""
-        elif 'script' in kwargs:
-            args = " ".join(kwargs.get('args', []))
-            command = f"{kwargs['script']} {args}"
+        else:
+            # Stitch all kwargs together into a single command attempt
+            # e.g., {"script": "python3", "args": "-c '...'"} -> "python3 -c '...'"
+            parts = []
+            for k, v in kwargs.items():
+                if isinstance(v, list):
+                    parts.append(" ".join(str(x) for x in v))
+                else:
+                    parts.append(str(v))
+            command = " ".join(parts)
             
     if not command:
-        return "ERROR: You used 'script' or 'args'. You MUST pass a single string under the key 'command'. Example: {'command': 'python3 script.py'}."
+        return "ERROR: You must pass a single string under the key 'command'."
 
     step_count += 1
     if not container_id:
@@ -127,6 +132,25 @@ def run_in_sandbox(command: str = None, **kwargs) -> str:
         sm.sync_workspace(container_id, "app/evidence_storage")
 
     return f"Exit Code: {result['exit_code']}\nOutput:\n{output_text}"
+
+
+@tool
+def execute_python_code(code: str) -> str:
+    """Executes a block of Python code inside the sandbox.
+    Use this instead of run_in_sandbox for multi-line Python scripts to avoid escaping issues.
+    REQUIRED PARAMETER: 'code' (str) containing the raw python script.
+    """
+    global container_id
+    if not container_id:
+        container_id = sm.start_container()
+        
+    # Save the raw code to a temporary file in the sandbox and execute it
+    import base64
+    encoded_code = base64.b64encode(code.encode('utf-8')).decode('utf-8')
+    cmd = f"echo '{encoded_code}' | base64 -d > /tmp/agent_script.py && python3 /tmp/agent_script.py"
+    
+    result = sm.execute_command(container_id, f'bash -c "{cmd}"')
+    return f"Exit Code: {result['exit_code']}\nOutput:\n{result['output']}"
 
 
 @tool
@@ -380,6 +404,7 @@ You run on the GPU and handle strategic reasoning, attack planning, and exploit 
 
 Your agent tools:
 - run_in_sandbox: Execute any shell command
+- execute_python_code: Execute multi-line Python scripts reliably
 - write_file_in_sandbox: Create files inside the sandbox
 - read_file_from_sandbox: Read file contents
 - search_knowledge_base: Query the RAG knowledge base for payloads/syntax
@@ -393,7 +418,9 @@ CRITICAL RULES:
 3. For payload/syntax lookups, use search_knowledge_base.
 4. BINARY SAFETY: Never read_file_from_sandbox on .enc/.jpg/.bin files. Use xxd.
 5. If a command fails, analyze the error and try a corrected approach.
-6. When all objectives are met, call mark_phase_complete with evidence."""
+6. When all objectives are met, call mark_phase_complete with evidence.
+7. THE SANDBOX IS EMPTY. Do not try to run custom Python scripts (like frequency_analysis.py) because they DO NOT EXIST. If you need a script, you MUST create it first using write_file_in_sandbox, OR use `python3 -c "inline code"`.
+8. For multi-line Python logic, ALWAYS use execute_python_code instead of run_in_sandbox to avoid shell escaping hell."""
 
     if filename:
         base_prompt += f"\n\nFile uploaded at /workspace/{filename}. Start by analyzing it."
@@ -468,7 +495,7 @@ def main():
         # Initialize NPU model lazily (on first send_to_npu call)
         npu_model = None
 
-        all_tools = [run_in_sandbox, write_file_in_sandbox, read_file_from_sandbox,
+        all_tools = [run_in_sandbox, execute_python_code, write_file_in_sandbox, read_file_from_sandbox,
                      multimodal_analysis, search_knowledge_base, send_to_npu,
                      mark_phase_complete]
 
