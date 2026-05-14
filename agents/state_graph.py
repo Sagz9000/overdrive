@@ -83,16 +83,20 @@ def create_solver_node(solver_llm, all_tools, playbook_engine, obs):
             input_len = len(input_messages)
             new_msgs = result["messages"][input_len:]
             
+            # Catch empty tool calls (Requirement 3)
+            # Check if ANY AIMessage in the new batch has a tool call
+            has_tool_call = any(isinstance(m, AIMessage) and m.tool_calls for m in new_msgs)
+            
+            if not has_tool_call:
+                nudge = "System Error: You provided text but no valid tool call. You must use a tool to proceed."
+                new_msgs.append(HumanMessage(content=nudge))
+                obs.log_execution_step("agent_empty_call_nudge", {"reason": "No tool call detected in response batch"})
+
             # Log the raw response for debugging
             for m in new_msgs:
                 if isinstance(m, AIMessage):
                     obs.log_execution_step("agent_raw_output", {"content": m.content, "tool_calls": getattr(m, 'tool_calls', [])})
             
-            # Add a placeholder if the model output nothing (prevents infinite loops)
-            if not new_msgs:
-                new_msgs = [AIMessage(content="(thinking...)")]
-                obs.log_execution_step("agent_silent", {"reason": "Model returned no messages"})
-
             # Update the live dashboard
             try:
                 reasoning = ""
@@ -112,6 +116,15 @@ def create_solver_node(solver_llm, all_tools, playbook_engine, obs):
                 )
             except Exception:
                 pass  # Never let reporting crash the agent
+
+            # Force immediate transition if mark_phase_complete was called (Requirement 1)
+            # This prevents the solver node from looping internally if recursion limit allows it
+            for m in new_msgs:
+                if isinstance(m, AIMessage) and hasattr(m, 'tool_calls'):
+                    if any(tc.get('name') == 'mark_phase_complete' for tc in m.tool_calls):
+                        obs.log_execution_step("force_transition", {"reason": "mark_phase_complete detected"})
+                        # We return immediately to let should_continue_or_review trigger the node swap
+                        break
 
             return {
                 "messages": new_msgs,
@@ -468,11 +481,6 @@ CRITICAL RULES:
 6. DO NOT search for pre-built recovery scripts (e.g., find / -name "*.py"). They are NOT there. You are the one who must write the code.
 7. For multi-line Python logic, ALWAYS use execute_python_code instead of run_in_sandbox to avoid shell escaping hell.
 8. If you find a flag, it will be automatically captured.
-
-TOOL FORMATTING RULES:
-You MUST use the following format for tool calls:
-Reasoning: <step-by-step logic>
-Action: <tool_name>
-Action Input: <JSON_formatted_args>
+9. NATIVE TOOL CALLING: You are equipped with native tool calling. DO NOT output raw text like 'Action: tool_name' or 'Action Input: ...'. You MUST use the actual JSON tool call format provided by the API. Failure to use the native tool schema will result in a system error.
 """
     return prompt

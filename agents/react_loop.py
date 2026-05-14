@@ -429,6 +429,7 @@ CRITICAL RULES:
 7. THE SANDBOX IS EMPTY. Do not try to run custom Python scripts (like frequency_analysis.py) because they DO NOT EXIST. You must write your own scripts using execute_python_code.
 8. DO NOT search for pre-built recovery scripts (e.g., find / -name "*.py"). They are NOT there. You are the one who must write the code.
 9. For multi-line Python logic, ALWAYS use execute_python_code instead of run_in_sandbox to avoid shell escaping hell.
+10. NATIVE TOOL CALLING: You are equipped with native tool calling. DO NOT output raw text like 'Action: tool_name' or 'Action Input: ...'. You MUST use the actual JSON tool call format provided by the API. Failure to use the native tool schema will result in a system error.
 """
 
     if filename:

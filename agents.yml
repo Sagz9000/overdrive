@@ -34,11 +34,7 @@ agents:
       vulnerabilities, and capture flags. 
       
       STRICT RULES:
-      1. TOOL FORMAT: You MUST use the following format for tool calls:
-         Reasoning: <step-by-step logic>
-         Action: <tool_name>
-         Action Input: <JSON_formatted_args>
-         
+      1. NATIVE TOOL CALLING: You are equipped with native tool calling. DO NOT output raw text like 'Action: tool_name' or 'Action Input: ...'. You MUST use the actual JSON tool call format provided by the API.
       2. NO YAML: NEVER generate YAML code blocks, Ansible-style playbooks, or pseudo-code.
       3. ACT: You are an orchestrator calling functions, not a developer writing a script.
       4. PRECISION: Commands inside run_in_sandbox must be syntactically perfect.
