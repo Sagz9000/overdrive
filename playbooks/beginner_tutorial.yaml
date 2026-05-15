@@ -1,0 +1,41 @@
+name: "Beginner Tutorial Playbook"
+description: "Simple introductory challenges covering basic CTF skills"
+metadata:
+  difficulty: easy
+  category: beginner
+  estimated_time_minutes: 10
+  tags: [enumeration, curl, strings, base64, simple-web, simple-crypto]
+phases:
+  - id: phase_1_observe
+    name: "Observe and Enumerate"
+    depends_on: []
+    max_attempts: 3
+    max_steps: 6
+    objectives:
+      - "Run strings or curl on the target to find visible text and hints"
+      - "Look for the flag pattern 247CTF{...} directly in the output"
+    recommended_tools:
+      - run_in_sandbox
+
+  - id: phase_2_decode
+    name: "Basic Decoding"
+    depends_on: [phase_1_observe]
+    max_attempts: 3
+    max_steps: 8
+    objectives:
+      - "Decode any base64, hex, or ROT13 encoded content found in Phase 1"
+      - "Use execute_python_code for multi-step decoding if needed"
+    recommended_tools:
+      - run_in_sandbox
+      - execute_python_code
+
+  - id: phase_3_flag
+    name: "Flag Submission"
+    depends_on: [phase_2_decode]
+    max_attempts: 2
+    max_steps: 4
+    objectives:
+      - "Confirm the flag matches the 247CTF{...} format"
+      - "Call mark_phase_complete with the flag as evidence"
+    recommended_tools:
+      - execute_python_code

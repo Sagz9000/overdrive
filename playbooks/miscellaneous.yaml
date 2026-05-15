@@ -1,0 +1,56 @@
+name: "Miscellaneous CTF Playbook"
+description: "Steganography, encoding puzzles, OSINT, and mixed-category challenges"
+metadata:
+  difficulty: easy
+  category: miscellaneous
+  estimated_time_minutes: 15
+  tags: [steganography, encoding, base64, rot13, qr, exif, polyglot]
+phases:
+  - id: phase_1_recon
+    name: "File Identification"
+    depends_on: []
+    max_attempts: 3
+    max_steps: 6
+    objectives:
+      - "Run: file <target> to identify the file type"
+      - "Run: exiftool <target> to dump metadata — flags are often hidden in EXIF comments"
+      - "Run: strings <target> | grep -iE 'flag|ctf|247' to find plaintext leaks"
+    recommended_tools:
+      - run_in_sandbox
+
+  - id: phase_2_encoding
+    name: "Encoding and Decoding"
+    depends_on: [phase_1_recon]
+    max_attempts: 3
+    max_steps: 10
+    objectives:
+      - "Try base64 decode: base64 -d <<< '<data>' or via execute_python_code"
+      - "Try ROT13: echo '<data>' | tr 'A-Za-z' 'N-ZA-Mn-za-m'"
+      - "Try hex decode or URL decode via execute_python_code with bytes.fromhex() or urllib.parse"
+    recommended_tools:
+      - run_in_sandbox
+      - execute_python_code
+
+  - id: phase_3_steganography
+    name: "Steganography Extraction"
+    depends_on: [phase_2_encoding]
+    max_attempts: 3
+    max_steps: 10
+    objectives:
+      - "If image: run steghide extract -sf <file> -p '' to check for hidden data"
+      - "If PNG: run zsteg <file> to check LSB channels"
+      - "Check file for appended data: binwalk <file> and xxd <file> | tail -20"
+    recommended_tools:
+      - run_in_sandbox
+      - execute_python_code
+
+  - id: phase_4_flag
+    name: "Flag Assembly"
+    depends_on: [phase_3_steganography]
+    max_attempts: 2
+    max_steps: 5
+    objectives:
+      - "Combine all extracted fragments and verify the flag format (247CTF{...})"
+      - "If the flag is split across multiple sources, concatenate and submit"
+    recommended_tools:
+      - execute_python_code

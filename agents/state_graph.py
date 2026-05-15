@@ -24,6 +24,8 @@ class CTFSolverState(TypedDict):
     max_retries: int                     # Max review rejections before force-advance
     reviewer_feedback: str               # Last reviewer feedback
     evidence_board: str                  # Accumulated evidence from previous phases
+    empty_call_streak: int               # Consecutive turns with no tool call
+    force_review: bool                   # Signals immediate transition to verify
 
 # =============================================================================
 # Nodes (Agent Logic)
@@ -73,13 +75,13 @@ def create_solver_node(solver_llm, all_tools, playbook_engine, obs):
         # Create a phase-specific react agent with filtered tools
         agent = create_react_agent(solver_llm, available_tools, prompt=system_prompt)
         
-        # Prune message history if it's getting too long for the context window
+        # Prune message history to stay within the small-model context window
         input_messages = list(state["messages"]) + pending_msgs
-        if len(input_messages) > 20:
+        if len(input_messages) > 12:
             # Keep first message (the task) and the most recent context
-            input_messages = [input_messages[0]] + input_messages[-19:]
+            input_messages = [input_messages[0]] + input_messages[-11:]
 
-        config = {"recursion_limit": 50}
+        config = {"recursion_limit": 25}
         inputs = {"messages": input_messages}
         
         try:
@@ -89,16 +91,34 @@ def create_solver_node(solver_llm, all_tools, playbook_engine, obs):
             input_len = len(input_messages)
             new_msgs = result["messages"][input_len:]
             
-            # Catch empty tool calls (Requirement 3)
-            # Check if ANY AIMessage in the new batch has a tool call
+            # Catch empty tool calls — track consecutive misses and force review after 3
             has_tool_call = any(isinstance(m, AIMessage) and m.tool_calls for m in new_msgs)
-            
+
             if not has_tool_call:
-                nudge = ("System Error: You provided text but no valid tool call. You must use a tool to proceed.\n"
-                         "IMPORTANT: You must use the actual JSON tool call format provided by the API.\n"
-                         "Example: {\"name\": \"run_in_sandbox\", \"parameters\": {\"command\": \"ls\"}}")
+                empty_streak = state.get("empty_call_streak", 0) + 1
+                obs.log_execution_step("agent_empty_call_nudge", {"streak": empty_streak})
+                if empty_streak >= 3:
+                    obs.log_execution_step("force_review_empty_streak", {"reason": "3 consecutive empty responses"})
+                    return {
+                        "messages": new_msgs,
+                        "step_count": state["step_count"] + 1,
+                        "empty_call_streak": 0,
+                        "force_review": True,
+                    }
+                nudge = (
+                    f"[Attempt {empty_streak}/3] You must call a tool — do not output plain text.\n"
+                    "Use this exact format:\n"
+                    '```json\n{"name": "run_in_sandbox", "parameters": {"command": "ls /"}}\n```\n'
+                    f"Available tools: {', '.join(t.name for t in available_tools)}"
+                )
                 new_msgs.append(HumanMessage(content=nudge))
-                obs.log_execution_step("agent_empty_call_nudge", {"reason": "No tool call detected in response batch"})
+                return {
+                    "messages": new_msgs,
+                    "step_count": state["step_count"] + 1,
+                    "empty_call_streak": empty_streak,
+                    "force_review": False,
+                }
+            empty_streak = 0
 
             # Log the raw response for debugging
             for m in new_msgs:
@@ -137,6 +157,8 @@ def create_solver_node(solver_llm, all_tools, playbook_engine, obs):
             return {
                 "messages": new_msgs,
                 "step_count": state["step_count"] + 1,
+                "empty_call_streak": empty_streak,
+                "force_review": False,
             }
 
         except Exception as e:
@@ -146,6 +168,8 @@ def create_solver_node(solver_llm, all_tools, playbook_engine, obs):
                 "messages": [AIMessage(content=error_msg)],
                 "error_count": state["error_count"] + 1,
                 "step_count": state["step_count"] + 1,
+                "empty_call_streak": 0,
+                "force_review": False,
             }
 
     return solver_node
@@ -195,10 +219,11 @@ def create_reviewer_node(reviewer_llm, obs):
             HumanMessage(content=instructions + review_prompt),
         ]
 
-        # HYBRID LOGIC: Escalate to Gemini 2.5 Flash if local model fails multiple times
+        # HYBRID LOGIC: Escalate to cloud reviewer only if API key is configured
         current_reviewer = reviewer_llm
-        is_escalated = state["retry_count"] >= 2
-        
+        _has_cloud_key = bool(os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY"))
+        is_escalated = state["retry_count"] >= 2 and _has_cloud_key
+
         if is_escalated:
             try:
                 from app.llm_factory import get_llm
@@ -272,10 +297,15 @@ def should_continue_or_review(state: CTFSolverState) -> str:
     Decide whether to continue solving or transition to review.
 
     Called after the solver node. Checks:
-    1. Was mark_phase_complete called? -> go to "verify"
-    2. Step limit reached? -> go to "verify"
-    3. Otherwise -> loop back to solver ("continue")
+    1. force_review flag set (3 consecutive empty-call strikes) -> go to "verify"
+    2. Was mark_phase_complete called? -> go to "verify"
+    3. Step limit reached? -> go to "verify"
+    4. Excessive errors? -> go to "verify"
+    5. Otherwise -> loop back to solver ("continue")
     """
+    if state.get("force_review", False):
+        return "verify"
+
     # Check if the agent called mark_phase_complete in the most recent turn
     for msg in reversed(state["messages"][-5:]):
         if isinstance(msg, AIMessage) and hasattr(msg, 'tool_calls'):
@@ -288,7 +318,7 @@ def should_continue_or_review(state: CTFSolverState) -> str:
         return "verify"
 
     # Check for excessive errors
-    if state["error_count"] >= 5:
+    if state["error_count"] >= 4:
         return "verify"
 
     return "continue"
@@ -351,17 +381,32 @@ def build_ctf_graph(solver_llm, reviewer_llm, all_tools, playbook_engine, obs):
     return workflow.compile()
 
 
-def run_state_graph(graph, playbook_engine, initial_messages, obs, max_steps=30, max_retries=3, flag_format=""):
+def run_state_graph(graph, playbook_engine, initial_messages, obs, max_steps=15, max_retries=2, flag_format=""):
     """Execute the playbook using the compiled LangGraph."""
     all_flags = []
     total_steps = 0
 
     evidence_board = ""
-    
+
+    # Guard against phase dependency loops: cap at 3× the number of phases
+    max_phase_iterations = max(len(playbook_engine.phase_states) * 3, 9)
+    phase_iteration = 0
+
     while not playbook_engine.is_complete():
+        phase_iteration += 1
+        if phase_iteration > max_phase_iterations:
+            obs.log_execution_step("playbook_stuck", {
+                "reason": "Phase iteration limit exceeded — possible circular dependency or stall",
+                "iterations": phase_iteration,
+            })
+            break
+
         current_phase = playbook_engine.get_current_phase()
         if not current_phase:
             break
+
+        # Honour per-phase step budget if the playbook defines one
+        phase_max_steps = current_phase.get("max_steps", max_steps)
 
         phase_state_name = f"phase_{playbook_engine.current_phase_index}"
         obs.log_execution_step("phase_start", {
@@ -385,12 +430,14 @@ def run_state_graph(graph, playbook_engine, initial_messages, obs, max_steps=30,
             "found_flags": all_flags,
             "error_count": 0,
             "step_count": 0,
-            "max_steps": max_steps,
+            "max_steps": phase_max_steps,
             "flag_format": flag_format,
             "retry_count": 0,
             "max_retries": max_retries,
             "reviewer_feedback": "",
             "evidence_board": evidence_board,
+            "empty_call_streak": 0,
+            "force_review": False,
         }
 
         # Run the graph for this phase
@@ -464,31 +511,35 @@ def _build_phase_prompt(phase_data: dict, state_name: str,
     """Build a dynamic system prompt for the current phase."""
     tool_names = [t.name for t in available_tools]
 
-    prompt = f"""You are the Lead Orchestrator of a heterogeneous CTF solving system.
-You are currently in the {state_name.upper()} phase.
+    # Cap objectives to 3 so small models don't lose them past the attention window
+    objectives = phase_data.get("objectives", [])[:3]
 
-CURRENT PHASE: {phase_data.get('name', 'Unknown')}
-Objectives:
+    # Trim evidence board to keep context lean for small models
+    _eb = evidence_board if evidence_board else "No previous evidence."
+    if len(_eb) > 1200:
+        _eb = "...[earlier evidence trimmed]...\n" + _eb[-1000:]
+
+    prompt = f"""You are the Lead Orchestrator of a CTF solving system.
+PHASE: {phase_data.get('name', 'Unknown')}
+
+OBJECTIVES (complete in order):
 """
-    for obj in phase_data.get("objectives", []):
+    for obj in objectives:
         prompt += f"- {obj}\n"
 
     prompt += f"""
-Available tools in this phase: {', '.join(tool_names)}
+TOOLS: {', '.join(tool_names)}
 
-=== EVIDENCE BOARD (Findings from previous phases) ===
-{evidence_board if evidence_board else "No previous evidence available."}
-======================================================
+EVIDENCE FROM PREVIOUS PHASES:
+{_eb}
 
-CRITICAL RULES:
-1. YOU MUST USE TOOLS. Never output pseudo-code or describe what you would do.
-2. Follow the objectives strictly. Complete them in order.
-3. If a tool fails, analyze the error and try a different approach.
-4. When ALL objectives are met, call mark_phase_complete with evidence.
-5. THE SANDBOX IS EMPTY. Do not try to run custom Python scripts (like frequency_analysis.py) because they DO NOT EXIST. You must write your own scripts using execute_python_code.
-6. DO NOT search for pre-built recovery scripts (e.g., find / -name "*.py"). They are NOT there. You are the one who must write the code.
-7. For multi-line Python logic, ALWAYS use execute_python_code instead of run_in_sandbox to avoid shell escaping hell.
-8. If you find a flag, it will be automatically captured.
-9. NATIVE TOOL CALLING: You are equipped with native tool calling. DO NOT output raw text like 'Action: tool_name' or 'Action Input: ...'. You MUST use the actual JSON tool call format provided by the API. Failure to use the native tool schema will result in a system error.
+RULES:
+1. Call ONE tool per message. Never output plain text without a tool call.
+2. THE SANDBOX IS EMPTY — write scripts via execute_python_code, not run_in_sandbox.
+3. When all objectives are met, call mark_phase_complete with your evidence.
+4. Use the JSON tool call format. Example:
+```json
+{{"name": "run_in_sandbox", "parameters": {{"command": "ls /"}}}}
+```
 """
     return prompt

@@ -1,0 +1,59 @@
+name: "Pwnable / Binary Exploitation Playbook"
+description: "Stack-based and heap-based binary exploitation for CTF pwnables"
+metadata:
+  difficulty: hard
+  category: pwnable
+  estimated_time_minutes: 30
+  tags: [buffer-overflow, ret2libc, rop, shellcode, pwntools, format-string]
+phases:
+  - id: phase_1_recon
+    name: "Binary Reconnaissance"
+    depends_on: []
+    max_attempts: 3
+    max_steps: 8
+    objectives:
+      - "Run: file <binary> to identify architecture and binary type"
+      - "Run: checksec <binary> to identify mitigations (NX, PIE, RELRO, canary)"
+      - "Run: strings <binary> | head -40 to find hardcoded strings or hints"
+    recommended_tools:
+      - file
+      - checksec
+      - strings
+
+  - id: phase_2_analysis
+    name: "Vulnerability Analysis"
+    depends_on: [phase_1_recon]
+    max_attempts: 3
+    max_steps: 12
+    objectives:
+      - "Run the binary with input: echo 'AAAA' | ./<binary> to observe basic behaviour"
+      - "Test for buffer overflow: python3 -c 'print(\"A\"*200)' | ./<binary>"
+      - "Find the overflow offset using a cyclic pattern via execute_python_code with pwntools cyclic()"
+    recommended_tools:
+      - run_in_sandbox
+      - execute_python_code
+
+  - id: phase_3_exploit
+    name: "Exploit Development"
+    depends_on: [phase_2_analysis]
+    max_attempts: 3
+    max_steps: 15
+    objectives:
+      - "Write a pwntools exploit script via execute_python_code to control RIP/EIP"
+      - "If NX disabled: inject shellcode and redirect execution"
+      - "If NX enabled: build a ret2libc or ROP chain to call system('/bin/sh')"
+    recommended_tools:
+      - execute_python_code
+      - run_in_sandbox
+
+  - id: phase_4_flag
+    name: "Flag Capture"
+    depends_on: [phase_3_exploit]
+    max_attempts: 2
+    max_steps: 6
+    objectives:
+      - "Run the exploit and capture the shell output or flag string"
+      - "If remote: update pwntools script to connect to the challenge host and port"
+    recommended_tools:
+      - execute_python_code
+      - run_in_sandbox

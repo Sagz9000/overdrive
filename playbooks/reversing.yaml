@@ -1,0 +1,56 @@
+name: "Reversing Playbook"
+description: "Static and dynamic reverse engineering of compiled binaries"
+metadata:
+  difficulty: medium
+  category: reversing
+  estimated_time_minutes: 25
+  tags: [ghidra, radare2, ltrace, strace, decompile, anti-debug]
+phases:
+  - id: phase_1_recon
+    name: "Initial Binary Analysis"
+    depends_on: []
+    max_attempts: 3
+    max_steps: 8
+    objectives:
+      - "Run: file <binary> and checksec <binary> to understand the target"
+      - "Run: strings <binary> | grep -iE 'flag|ctf|key|pass|secret' to find obvious leaks"
+      - "Run: objdump -d <binary> | head -60 to view the entry point disassembly"
+    recommended_tools:
+      - run_in_sandbox
+
+  - id: phase_2_dynamic
+    name: "Dynamic Tracing"
+    depends_on: [phase_1_recon]
+    max_attempts: 3
+    max_steps: 10
+    objectives:
+      - "Run the binary under ltrace to trace library calls: ltrace ./<binary>"
+      - "Run under strace to trace syscalls: strace ./<binary>"
+      - "Observe any string comparisons or key derivation in the traces"
+    recommended_tools:
+      - run_in_sandbox
+
+  - id: phase_3_decompile
+    name: "Static Decompilation and Logic Recovery"
+    depends_on: [phase_2_dynamic]
+    max_attempts: 3
+    max_steps: 12
+    objectives:
+      - "Use radare2 to analyse functions: r2 -q -c 'aaa; afl' <binary>"
+      - "Disassemble the main or check function: r2 -q -c 'aaa; pdf @ main' <binary>"
+      - "Write a Python script via execute_python_code to replicate or reverse the key algorithm"
+    recommended_tools:
+      - run_in_sandbox
+      - execute_python_code
+
+  - id: phase_4_flag
+    name: "Key/Flag Extraction"
+    depends_on: [phase_3_decompile]
+    max_attempts: 2
+    max_steps: 6
+    objectives:
+      - "Supply the recovered key or input to the binary to retrieve the flag"
+      - "If the flag is encoded, decode it using the recovered algorithm in execute_python_code"
+    recommended_tools:
+      - run_in_sandbox
+      - execute_python_code

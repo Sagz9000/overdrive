@@ -215,9 +215,12 @@ class LlamaCppChatWrapper(BaseChatModel):
             elif isinstance(msg, AIMessage):
                 chat_messages.append({"role": "assistant", "content": msg.content or ""})
             elif hasattr(msg, 'type') and msg.type == 'tool':
+                tool_content = str(msg.content)
+                if len(tool_content) > 1500:
+                    tool_content = tool_content[:750] + "\n...[output truncated]...\n" + tool_content[-400:]
                 chat_messages.append({
                     "role": "user",
-                    "content": "[Tool Result: " + str(getattr(msg, 'name', 'tool')) + "]\n" + str(msg.content)
+                    "content": "[Tool Result: " + str(getattr(msg, 'name', 'tool')) + "]\n" + tool_content
                 })
             else:
                 chat_messages.append({"role": "user", "content": str(msg.content)})
@@ -246,11 +249,16 @@ class LlamaCppChatWrapper(BaseChatModel):
         tool_calls = []
         if self._tools:
             try:
-                # Pattern 1: Native JSON tool calls (Name/Parameters or Tool/Arguments or Action/Input)
+                # Pattern 1: Native JSON tool calls — prefer fenced blocks, then targeted fallback
                 json_blocks = _re.findall(r'```json\s*(\{.*?\})\s*```', content, _re.DOTALL)
                 if not json_blocks:
-                    # Fallback to finding any JSON-like block if no markdown block
-                    json_blocks = _re.findall(r'(\{[\s\S]*?\})', content)
+                    # Fallback: only grab JSON objects that reference a known tool name to avoid
+                    # matching random JSON snippets in reasoning text or tool outputs
+                    tool_name_pattern = "|".join(_re.escape(t.name) for t in self._tools)
+                    json_blocks = _re.findall(
+                        rf'(\{{[^{{}}]*?(?:{tool_name_pattern})[^{{}}]*?\}})',
+                        content, _re.DOTALL
+                    ) if tool_name_pattern else []
                 
                 for block in json_blocks:
                     try:
@@ -340,7 +348,6 @@ class LlamaCppChatWrapper(BaseChatModel):
             message = AIMessage(content=content)
 
         return ChatResult(generations=[ChatGeneration(message=message)])
-        return ChatResult(generations=[generation])
 
     @property
     def _llm_type(self) -> str:
