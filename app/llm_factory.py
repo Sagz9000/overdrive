@@ -249,16 +249,16 @@ class LlamaCppChatWrapper(BaseChatModel):
         tool_calls = []
         if self._tools:
             try:
-                # Pattern 1: Native JSON tool calls — prefer fenced blocks, then targeted fallback
-                json_blocks = _re.findall(r'```json\s*(\{.*?\})\s*```', content, _re.DOTALL)
+                # Pattern 1: Native JSON tool calls — prefer fenced blocks
+                # Use greedy matching within backticks to capture multi-line JSON with code blocks
+                json_blocks = _re.findall(r'```json\s*(.*?)\s*```', content, _re.DOTALL)
+                # Filter to blocks that parse as JSON (not other code blocks)
+                json_blocks = [b for b in json_blocks if b.strip().startswith('{')]
+
                 if not json_blocks:
-                    # Fallback: only grab JSON objects that reference a known tool name to avoid
-                    # matching random JSON snippets in reasoning text or tool outputs
-                    tool_name_pattern = "|".join(_re.escape(t.name) for t in self._tools)
-                    json_blocks = _re.findall(
-                        rf'(\{{[^{{}}]*?(?:{tool_name_pattern})[^{{}}]*?\}})',
-                        content, _re.DOTALL
-                    ) if tool_name_pattern else []
+                    # Fallback: grab any JSON-like braced block in the content
+                    # Non-greedy first, to get the first complete object
+                    json_blocks = _re.findall(r'(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})', content)
                 
                 for block in json_blocks:
                     try:
@@ -269,9 +269,17 @@ class LlamaCppChatWrapper(BaseChatModel):
                             block = _re_internal.sub(r'"""([\s\S]*?)"""', lambda m: _json.dumps(m.group(1)), block)
                         
                         data = _json.loads(block)
-                        # Handle multiple naming conventions
+                        # Handle multiple naming conventions for tool name
                         tool_name = data.get("name") or data.get("tool") or data.get("action")
-                        tool_args = data.get("parameters") or data.get("arguments") or data.get("input") or {}
+                        # Handle multiple naming conventions for arguments
+                        # Try: parameters, arguments, input, or direct field names like "code", "command", "query"
+                        tool_args = (
+                            data.get("parameters") or
+                            data.get("arguments") or
+                            data.get("input") or
+                            {k: v for k, v in data.items() if k not in ("name", "tool", "action")} or
+                            {}
+                        )
                         
                         # Normalize string arguments to dict if necessary
                         if isinstance(tool_args, str) and tool_name:
