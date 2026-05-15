@@ -215,9 +215,12 @@ class LlamaCppChatWrapper(BaseChatModel):
             elif isinstance(msg, AIMessage):
                 chat_messages.append({"role": "assistant", "content": msg.content or ""})
             elif hasattr(msg, 'type') and msg.type == 'tool':
+                tool_content = str(msg.content)
+                if len(tool_content) > 1500:
+                    tool_content = tool_content[:750] + "\n...[output truncated]...\n" + tool_content[-400:]
                 chat_messages.append({
                     "role": "user",
-                    "content": "[Tool Result: " + str(getattr(msg, 'name', 'tool')) + "]\n" + str(msg.content)
+                    "content": "[Tool Result: " + str(getattr(msg, 'name', 'tool')) + "]\n" + tool_content
                 })
             else:
                 chat_messages.append({"role": "user", "content": str(msg.content)})
@@ -246,11 +249,16 @@ class LlamaCppChatWrapper(BaseChatModel):
         tool_calls = []
         if self._tools:
             try:
-                # Pattern 1: Native JSON tool calls (Name/Parameters or Tool/Arguments or Action/Input)
-                json_blocks = _re.findall(r'```json\s*(\{.*?\})\s*```', content, _re.DOTALL)
+                # Pattern 1: Native JSON tool calls — prefer fenced blocks
+                # Use greedy matching within backticks to capture multi-line JSON with code blocks
+                json_blocks = _re.findall(r'```json\s*(.*?)\s*```', content, _re.DOTALL)
+                # Filter to blocks that parse as JSON (not other code blocks)
+                json_blocks = [b for b in json_blocks if b.strip().startswith('{')]
+
                 if not json_blocks:
-                    # Fallback to finding any JSON-like block if no markdown block
-                    json_blocks = _re.findall(r'(\{[\s\S]*?\})', content)
+                    # Fallback: grab any JSON-like braced block in the content
+                    # Non-greedy first, to get the first complete object
+                    json_blocks = _re.findall(r'(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})', content)
                 
                 for block in json_blocks:
                     try:
@@ -261,9 +269,17 @@ class LlamaCppChatWrapper(BaseChatModel):
                             block = _re_internal.sub(r'"""([\s\S]*?)"""', lambda m: _json.dumps(m.group(1)), block)
                         
                         data = _json.loads(block)
-                        # Handle multiple naming conventions
+                        # Handle multiple naming conventions for tool name
                         tool_name = data.get("name") or data.get("tool") or data.get("action")
-                        tool_args = data.get("parameters") or data.get("arguments") or data.get("input") or {}
+                        # Handle multiple naming conventions for arguments
+                        # Try: parameters, arguments, input, or direct field names like "code", "command", "query"
+                        tool_args = (
+                            data.get("parameters") or
+                            data.get("arguments") or
+                            data.get("input") or
+                            {k: v for k, v in data.items() if k not in ("name", "tool", "action")} or
+                            {}
+                        )
                         
                         # Normalize string arguments to dict if necessary
                         if isinstance(tool_args, str) and tool_name:
@@ -340,7 +356,6 @@ class LlamaCppChatWrapper(BaseChatModel):
             message = AIMessage(content=content)
 
         return ChatResult(generations=[ChatGeneration(message=message)])
-        return ChatResult(generations=[generation])
 
     @property
     def _llm_type(self) -> str:

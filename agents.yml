@@ -67,7 +67,7 @@ agents:
       - block_destructive
       - sanitize_output
       - enforce_workspace_boundary
-    max_steps: 50
+    max_steps: 15
 
   # == Utility & Recon Parser (NPU) ===========================================
   # Runs on the Intel Core Ultra 9 NPU via OpenVINO.
